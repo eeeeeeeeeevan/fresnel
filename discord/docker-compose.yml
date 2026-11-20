@@ -1,0 +1,18 @@
+services:
+  bot:
+    build:
+      context: ..
+      dockerfile: discord/Dockerfile
+    devices:
+      - /dev/kvm:/dev/kvm
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - kvmcache:/root/.freebsd-cache
+      - ./buildjunks:/app/discord/buildjunks
+      - ./machines.json:/app/discord/machines.json
+    restart: unless-stopped
+
+volumes:
+  kvmcache:

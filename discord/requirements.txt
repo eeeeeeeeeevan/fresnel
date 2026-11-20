@@ -1,0 +1,8 @@
+discord.py>=2.4
+pexpect
+
+aiohttp>=3.9
+paho-mqtt>=2.1
+petname>=0.2
+pysodium>=0.7.10
+pyjwt>=2.9

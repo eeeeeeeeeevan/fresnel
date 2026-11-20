@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>build logs</title>
+<style>
+body { 
+	background: black;
+	color: #ffffff; 
+	font: 13px/1.5 monospace; 
+}
+pre  { 
+	white-space: pre-wrap; 
+	word-break: break-all;
+}
+</style>
+</head>
+<body>
+<pre id="l"></pre>
+<script>
+const w = new WebSocket((location.protocol == "https:" ? "wss://" : "ws://") + location.host + "/ws/__U__/__K__");
+w.onmessage = e => {
+	const p = document.getElementById("l");
+	p.textContent += e.data + "\n";
+	window.scrollTo(0, 1e9);
+};
+</script>
+</body>
+</html>

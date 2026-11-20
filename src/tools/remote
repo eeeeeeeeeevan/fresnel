@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if ! command -v python3 >/dev/null 2>&1; then
+	pkg install -y python3
+fi
+
+if ! python3 -c 'import pysodium' >/dev/null 2>&1; then
+	pkg install -y libsodium py312-pysodium
+fi
+
+exec python3 "$DIR/remote.py" "$@"
