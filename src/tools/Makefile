@@ -1,4 +1,4 @@
 all:
-	@echo "remote is remote.py; run ./remote <target>"
+	@echo "kit cross-builds happen in the freebsd vm: make rebuild"
 
 clean:

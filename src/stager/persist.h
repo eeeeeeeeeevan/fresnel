@@ -3,9 +3,9 @@
 
 #include <sys/types.h>
 #include "common.h"
+#include "rand.h"
 #include <sys/uio.h>
 
-#define RMAGIC "CNRD9"
 #define RMAGIC_LINE RMAGIC "\n"
 #define RMAGIC_LEN (sizeof(RMAGIC))
 

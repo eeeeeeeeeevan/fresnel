@@ -11,29 +11,13 @@ from discord import app_commands
 from discord.ext import commands
 
 
-class ModeSelect(discord.ui.Select):
-	def __init__(self, wizard):
-		self.wizard = wizard
-		options = [
-			discord.SelectOption(label="full", value="full", description="the big thing"),
-			discord.SelectOption(label="submission", value="submission", description="normal ./remote for submission environment lol"),
-		]
-		super().__init__(placeholder="build mode", options=options, row=0)
-
-	async def callback(self, interaction):
-		self.wizard.mode = self.values[0]
-		await interaction.response.edit_message(view=self.wizard)
-
-
 class Wizard(discord.ui.View):
 	def __init__(self, cog, user):
 		super().__init__(timeout=600)
 		self.cog = cog
 		self.user_id = user
-		self.mode = "full"
 		self.features = {}
 
-		self.add_item(ModeSelect(self))
 		for i, feat in enumerate(features.all[:5]):
 			self.add_item(toggle(self, feat, 1))
 		self.add_item(button("start build", discord.ButtonStyle.primary, self.confirm, 2))
@@ -43,7 +27,7 @@ class Wizard(discord.ui.View):
 		for c in self.children:
 			c.disabled = True
 		await interaction.response.edit_message(view=self)
-		await self.cog.start_build(interaction, self.mode, self.features)
+		await self.cog.start_build(interaction, self.features)
 
 	async def cancel(self, interaction):
 		for c in self.children:
@@ -90,20 +74,20 @@ class BuildCog(commands.Cog):
 		embed.add_field(name="queue", value=f"{builder.queue_len()} waiting")
 		await interaction.response.send_message(embed=embed, view=Wizard(self, interaction.user.id), ephemeral=True)
 
-	async def start_build(self, interaction, mode, features):
-		alias = machines.random_alias() if mode == "full" else f"submission-{interaction.user.id}"
+	async def start_build(self, interaction, features):
+		alias = machines.random_alias()
 		name = f"{alias}-{int(time.time())}"
 
 		if getattr(self.bot, "tunnel_url", None):
 			url = self.bot.tunnel_url
 			await interaction.followup.send(
-				f"<@{interaction.user.id}> queued `{mode}`\n"
+				f"<@{interaction.user.id}> queued\n"
 				f"read logs: {url}/?u={interaction.user.id}&k={builder.link_token(interaction.user.id)}")
 		else:
-			await interaction.followup.send(f"<@{interaction.user.id}> queued `{mode}`")
+			await interaction.followup.send(f"<@{interaction.user.id}> queued")
 
 		try:
-			tar, _, dd, pub = await builder.run(interaction.user.id, name, features, mode)
+			tar, _, dd, pub = await builder.run(interaction.user.id, name, features)
 		except builder.QueueFull:
 			await interaction.followup.send("queue full (max 3 waiting), try again later")
 			return
@@ -111,10 +95,9 @@ class BuildCog(commands.Cog):
 			await interaction.followup.send(content=f"build failed\n```{e.log_tail[-1400:]}```")
 			return
 
-		if mode == "full" and dd:
-			machines.add(interaction.user.id, alias, dd, pub)
+		machines.add(interaction.user.id, alias, dd, pub)
 
-		extra = f"\nmachine name `{alias}` mid (machine id) `{dd}`" if mode == "full" and dd else ""
+		extra = f"\nmachine name `{alias}` mid (machine id) `{dd}`"
 		await interaction.followup.send(
 			content=f"<@{interaction.user.id}> built `{name}`{extra}",
 			file=discord.File(tar, filename=f"{name}.tar"))

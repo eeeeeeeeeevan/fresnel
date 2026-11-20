@@ -1,7 +1,7 @@
 FROM node:20-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	python3 python3-pip golang-go \
+	python3 python3-pip \
 	qemu-system-x86 qemu-utils \
 	libsodium23 libsodium-dev \
 	openssh-client perl curl xz-utils procps \

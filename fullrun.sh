@@ -54,7 +54,6 @@ mkdir -p "$CACHE"
 BASE_IMG="$CACHE/freebsd-$REL.qcow2"
 OVERLAY="$CACHE/overlay-$$.qcow2"
 KEY="$CACHE/id_ed25519"
-HOST_IP="10.0.2.2"
 
 ACCEL=(-cpu max)
 [[ -w /dev/kvm ]] && ACCEL=(-enable-kvm -cpu host)
@@ -159,10 +158,8 @@ if [[ -z "$TAR_FILE" ]]; then
     scp -q -r "${SSH_OPTS[@]}" -P "$PORT" \
         build.py config.json configgen.c \
         src/include/json.h \
-        shellcoder/pe.S shellcoder/shutdown_handler.c \
-        src/tools/privesc.c src/tools/install src/stager \
+        src/tools/install src/stager \
         src/shellproxy src/include src/lib \
-        src/tools/remote src/tools/remote.py \
         src/lib/spinneret.c src/lib/uehook.c \
         src/include/common.h src/include/ehook.h src/include/injector.h \
         src/include/janitor.h src/include/janitor_ufs.h src/include/janitor_vfs.h \
@@ -175,19 +172,19 @@ if [[ -z "$TAR_FILE" ]]; then
 fi
 
 # 3. Copy Tarball to both Root and Student Home Directories
-scp "${SSH_OPTS[@]}" -P "$PORT" "$TAR_FILE" root@127.0.0.1:/root/submission.tar
-scp "${SSH_OPTS[@]}" -P "$PORT" "$TAR_FILE" root@127.0.0.1:/home/student/submission.tar
+scp "${SSH_OPTS[@]}" -P "$PORT" "$TAR_FILE" root@127.0.0.1:/root/rootkit.tar
+scp "${SSH_OPTS[@]}" -P "$PORT" "$TAR_FILE" root@127.0.0.1:/home/student/rootkit.tar
 
 # 4. Execute ./install strictly from the root of /root/work
 echo "[*] Extracting and running ./install as root..."
 ssh "${SSH_OPTS[@]}" -p "$PORT" root@127.0.0.1 "
-    rm -rf /root/work && mkdir -p /root/work && tar -xf /root/submission.tar -C /root/work
-    rm -rf /home/student/work && mkdir -p /home/student/work && tar -xf /home/student/submission.tar -C /home/student/work
+    rm -rf /root/work && mkdir -p /root/work && tar -xf /root/rootkit.tar -C /root/work
+    rm -rf /home/student/work && mkdir -p /home/student/work && tar -xf /home/student/rootkit.tar -C /home/student/work
     chown -R student:student /home/student
     
     cd /root/work
     chmod +x ./install
-    ./install \"$HOST_IP\"
+    ./install
 "
 
 # 5. Print Instructions Banner and Drop into Interactive Shell
@@ -202,7 +199,6 @@ echo ""
 echo "  📋 Credentials & Environment Details:"
 echo "      • Current User   : student (password: freebsd)"
 echo "      • Root Account   : root    (password: freebsd, or run 'su -')"
-echo "      • Host IP (LAN)  : $HOST_IP (use for reverse shells/listeners)"
 echo "      • Working Dir    : /home/student/work"
 echo ""
 echo "  ⚡ To end your test session and destroy this VM, type: exit"

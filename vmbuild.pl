@@ -26,7 +26,6 @@ my $PIDFILE = "$CACHE/lab-qemu.pid";
 my $CONSOLE = "$CACHE/console.log";
 my $MEM = $ENV{LAB_MEM} // "2048M";
 my $SMP = $ENV{LAB_SMP} // "2";
-my $HOST_IP = "10.0.2.2";
 
 my @ssh_opts = (
     "-i", $KEY,
@@ -49,16 +48,11 @@ my @SRCS = (
     "config.json",
     "configgen.c",
     "src/include/json.h",
-    "shellcoder/pe.S",
-    "shellcoder/shutdown_handler.c",
-    "src/tools/privesc.c",
     "src/tools/install",
     "src/stager",
     "src/shellproxy",
     "src/include",
     "src/lib",
-    "remote/remote",
-    "remote/log",
     "src/lib/spinneret.c",
     "src/lib/uehook.c",
     "src/include/common.h",
@@ -191,10 +185,10 @@ sub reset_vm {
 
 sub install_tar {
     print "+ installing rootkit.tar...\n";
-    run("scp", @scp_opts, "-P", $PORT, "rootkit.tar", "$VM:/root/submission.tar");
+    run("scp", @scp_opts, "-P", $PORT, "rootkit.tar", "$VM:/root/rootkit.tar");
     run(ssh_cmd("rm -rf /root/rootkit /home/student/rootkit && mkdir -p /root/rootkit /home/student/rootkit"));
-    run(ssh_cmd("tar -xf /root/submission.tar -C /root/rootkit"));
-    run(ssh_cmd("chmod +x /root/rootkit/install && cd /root/rootkit && ./install $HOST_IP"));
+    run(ssh_cmd("tar -xf /root/rootkit.tar -C /root/rootkit"));
+    run(ssh_cmd("chmod +x /root/rootkit/install && cd /root/rootkit && ./install"));
     run(ssh_cmd("cp -R /root/rootkit /home/student/rootkit && chown -R student:student /home/student/rootkit"));
 }
 

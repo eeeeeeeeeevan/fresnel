@@ -6,9 +6,7 @@
 
 .PHONY: all full rebuild fresh clean
 
-all:
-	cd src/tools && sh buildprivesc.sh
-	@echo "+ built"
+all: rebuild
 
 full:
 	bash fullrun.sh

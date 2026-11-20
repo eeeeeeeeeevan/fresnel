@@ -1,9 +1,9 @@
 import asyncio
 import hashlib
 import hmac, json, logging
-import os, re
+import os
 import secrets
-import shutil, socket, subprocess, sys, time
+import shutil, socket, sys, time
 
 botlog = logging.getLogger("botbuild")
 
@@ -101,25 +101,21 @@ DD_HEADER = """// per-build identity stamped by the builder (generated)
 """
 
 
-def stamp_dd(mode):
+def stamp_dd():
 	path = f"{repo}/src/shellproxy/dd_conf.h"
 	backup = open(path).read() if os.path.exists(path) else None
-	if mode == "full":
-		import pysodium
-		dd = secrets.randbits(64)
-		pub, priv = pysodium.crypto_box_keypair()
-		worker = os.environ.get("MQTT_WORKER", "").partition(":")[0]
-		token = os.environ.get("MQTT_TOKEN", "")
-		try:
-			ws_ip = socket.gethostbyname(worker) if worker else ""
-		except OSError:
-			ws_ip = ""
-		with open(path, "w") as f:
-			f.write(DD_HEADER % (dd, priv.hex(), worker, ws_ip, token))
-		return f"{dd:016x}", backup, pub.hex()
-	if backup is not None:
-		os.remove(path)
-	return None, backup, None
+	import pysodium
+	dd = secrets.randbits(64)
+	pub, priv = pysodium.crypto_box_keypair()
+	worker = os.environ.get("MQTT_WORKER", "").partition(":")[0]
+	token = os.environ.get("MQTT_TOKEN", "")
+	try:
+		ws_ip = socket.gethostbyname(worker) if worker else ""
+	except OSError:
+		ws_ip = ""
+	with open(path, "w") as f:
+		f.write(DD_HEADER % (dd, priv.hex(), worker, ws_ip, token))
+	return f"{dd:016x}", backup, pub.hex()
 
 
 def restore_dd(backup):
@@ -132,31 +128,7 @@ def restore_dd(backup):
 			f.write(backup)
 
 
-DEFAULT_REMOTE_PUB = "e4353550c44b1c499f46f39454fb703f67265a75899a52f8d04328300dfb7e5e"
-
-
-def build_remote(pub):
-	env = os.environ.copy()
-	env.update({
-		"CGO_ENABLED": "0",
-		"GOOS": "freebsd",
-		"GOARCH": "amd64",
-		"GOFLAGS": "-mod=vendor",
-	})
-	for name in ("remote", "log"):
-		result = subprocess.run(
-			["go", "build", "-trimpath",
-				"-ldflags", f"-s -w -X main.kitPubHex={pub}",
-				"-o", name, "."],
-			cwd=f"{repo}/remote",
-			env=env,
-			capture_output=True,
-			text=True)
-		if result.returncode != 0:
-			raise BuildError((result.stderr or result.stdout)[-1500:])
-
-
-async def run(uid, name, features, mode="full"):
+async def run(uid, name, features):
 	global waiting
 	if queue_len() >= 4:
 		raise QueueFull()
@@ -169,12 +141,9 @@ async def run(uid, name, features, mode="full"):
 
 		botlog.info(f"build start: {name} (features: {list(features)})")
 
-		dd, dd_backup, dd_pub = stamp_dd(mode)
-		remote_pub = dd_pub or DEFAULT_REMOTE_PUB
-		await asyncio.to_thread(build_remote, remote_pub)
-		if dd:
-			await push(f"+ dd {dd} + pub {dd_pub}")
-			botlog.info(f"+ dd {dd} + pub {dd_pub}")
+		dd, dd_backup, dd_pub = stamp_dd()
+		await push(f"+ dd {dd} + pub {dd_pub}")
+		botlog.info(f"+ dd {dd} + pub {dd_pub}")
 		
 		cfgpath = f"{repo}/config.json"
 		backup = open(cfgpath).read() if os.path.exists(cfgpath) else None

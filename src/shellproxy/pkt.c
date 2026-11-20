@@ -145,36 +145,3 @@ int proxy_session_keys (const u8* resp, const u8 nonce_r[24], u8 tx[32], u8 rx[3
 	return (0);
 }
 
-int proxy_pkt_send (struct socket* so, u8 key[32], u64 ctr, const u8* m, int mlen)
-{
-	u8 hdr[2];
-	u8 blob[MAX_PKT];
-	int clen = proxy_seal(m, mlen, key, 0x02, ctr, blob, sizeof(blob));
-	if (clen<0)
-		return (EMSGSIZE);
-
-	hdr[0] = clen>>8;
-	hdr[1] = clen&0xff;
-
-	if (proxy_send_n(so, hdr, 2)!=0)
-		return (1);
-	return proxy_send_n(so, blob, clen);
-}
-
-int proxy_pkt_recv (struct socket* so, u8 key[32], u64 ctr, u8* m, int* mlen)
-{
-	u8 hdr[2];
-	u8 blob[MAX_PKT];
-	int error = proxy_recv_n(so, hdr, 2);
-
-	if (error!=0)
-		return (error);
-	int clen = (hdr[0]<<8)|hdr[1];
-
-	error = proxy_recv_n(so, blob, clen);
-	if (error!=0)
-		return (error);
-
-	*mlen = proxy_unbox(blob, clen, key, 0x01, ctr, m, MAX_PKT);
-	return (*mlen<0)?EAUTH:0;
-}

