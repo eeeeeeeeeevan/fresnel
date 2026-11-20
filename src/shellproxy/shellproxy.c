@@ -63,6 +63,7 @@ int shutting_down;
 int mfire;
 int kthreads_started;
 int kthreads_done;
+time_t keylog_until;
 
 static linker_file_t lfclone = NULL;
 

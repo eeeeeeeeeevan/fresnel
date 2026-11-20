@@ -163,13 +163,13 @@ async def restarting(mid):
 	return False
 
 
-async def wake(mid):
+async def wake(mid, kind="a"):
 	bucket = int(time.time()) // BUCKET
 	log.info("dd wake %s buckets %d..%d", mid, bucket, bucket+WAKE_KEYS-1)
 
 	async def wake_key(session, b):
 		try:
-			url = cache_url(mid, "a", b)
+			url = cache_url(mid, kind, b)
 			async with session.get(url, headers=presence_headers(), timeout=6) as r:
 				await r.read()
 				log.info(f"cachetalk {r.status}, {r.headers.get('X-Cache', 'n/a')}")
@@ -181,3 +181,7 @@ async def wake(mid):
 	async with aiohttp.ClientSession() as session:
 		results = await asyncio.gather(*[wake_key(session, b) for b in range(bucket, bucket + WAKE_KEYS)])
 	return sum(results)
+
+
+async def keylog(mid):
+	return await wake(mid, "k")
