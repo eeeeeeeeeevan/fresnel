@@ -2,7 +2,7 @@
 
 Fresnel is a hybrid fileless rootkit for FreeBSD 14.5-RELEASE.
 
-for a detailed breakdown on Fresnel itself, see `fresnel rootkit.pdf`
+for a detailed breakdown on Fresnel itself, see `fresnel rootkit.pdf` (some details may be outdated)
 
 by:
 @fesari
