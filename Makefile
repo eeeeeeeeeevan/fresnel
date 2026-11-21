@@ -14,9 +14,5 @@ full:
 rebuild:
 	perl vmbuild.pl rebuild
 
-fresh:
-	bash lab/lab.sh reset
-	@echo "+ fresh vm, nothing installed"
-
 clean:
 	rm -f rootkit.tar

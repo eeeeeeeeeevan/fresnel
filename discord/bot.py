@@ -20,16 +20,25 @@ class Bot(commands.Bot):
 			await self.load_extension(name)
 			log.info(f"cmd loaded {name}")
 
+		cmdlist = self.tree.get_commands()
+		log.info(f"tree {len(cmdlist)}: {[c.name for c in cmdlist]}")
+
 		guild = os.environ.get("GUILD_ID")
 		if guild:
-			synced = await self.tree.sync(guild=discord.Object(id=int(guild)))
+			target = discord.Object(id=int(guild))
+			synced = await self.tree.sync(guild=target)
+			try:
+				remote = await self.tree.fetch_commands(guild=target)
+				log.info(f"remote {len(remote)}: {[c.name for c in remote]}")
+			except Exception as e:
+				log.info(f"remote fetch failed: {e}")
 		else:
 			synced = await self.tree.sync()
 		log.info(f"{len(synced)} loaded")
 
 	async def on_ready(self):
 		threading.Thread(target=tunnel.start, args=(self,), daemon=True).start()
-		log.info(f"{self.user}")
+		log.info(f"{self.user} guilds={[g.id for g in self.guilds]}")
 
 
 def main():
