@@ -98,3 +98,6 @@ This requires KVM passthrough. after it finishes downloading, check that the ima
 docker compose -f docker-compose.yml up -d 
 ```
 
+# CACHECALLER
+
+CACHECALLER currently uses `download.freebsd.org`. You can change this at src/shellproxy/dd.c and discord/machines.py. For more information on CACHECALLER, check the pdf
