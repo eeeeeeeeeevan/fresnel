@@ -26,6 +26,7 @@ class Bot(commands.Bot):
 		guild = os.environ.get("GUILD_ID")
 		if guild:
 			target = discord.Object(id=int(guild))
+			self.tree.copy_global_to(guild=target)
 			synced = await self.tree.sync(guild=target)
 			try:
 				remote = await self.tree.fetch_commands(guild=target)
