@@ -22,7 +22,7 @@ class Bot(commands.Bot):
 
 		guild = os.environ.get("GUILD_ID")
 		if guild:
-			synced = await self.tree.sync(discord.Object(id=int(guild)))
+			synced = await self.tree.sync(guild=discord.Object(id=int(guild)))
 		else:
 			synced = await self.tree.sync()
 		log.info(f"{len(synced)} loaded")
