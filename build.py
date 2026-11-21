@@ -24,6 +24,21 @@ def read(p):
     with open(p, "rb") as f:
         return f.read()
 
+
+def write(p, d):
+    with open(p, "wb") as f:
+        f.write(d)
+
+
+magic = secrets.token_hex(8)
+write("rand.h", f"""#define CN_END "__{magic}__"
+#define RMAGIC "{magic}"
+""".encode())
+
+run("cc", "-O2", "-o", "configgen", "configgen.c")
+with open("config.h", "wb") as f:
+    subprocess.run(["./configgen", "config.json"], stdout=f, check=True)
+
 if not os.path.exists("shellproxy/dd_conf.h"):
     sys.exit("conf.h missing")
 for f in glob.glob("lib/*.o"):
