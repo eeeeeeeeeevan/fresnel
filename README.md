@@ -1,6 +1,6 @@
 # Fresnel
 
-Fresnel is a hybrid fileless rootkit for FreeBSD 14.5-RELEASE.
+Fresnel is a hybrid fileless rootkit for FreeBSD 14.5-RELEASE. It uses EVENTHANDLERs ("ehooks") for persistence, but otherwise is resident entirely in memory
 
 for a detailed breakdown on Fresnel itself, see `fresnel rootkit.pdf` (some details may be outdated)
 
