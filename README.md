@@ -1,6 +1,6 @@
 # Fresnel
 
-Fresnel is a hybrid fileless rootkit for FreeBSD 14.5-RELEASE. It uses EVENTHANDLERs ("ehooks") for persistence, but otherwise is resident entirely in memory
+Fresnel is a hybrid fileless rootkit for FreeBSD. It uses EVENTHANDLERs ("ehooks") for persistence, but otherwise is resident entirely in memory
 
 for a detailed breakdown on Fresnel itself, see `fresnel rootkit.pdf` (some details may be outdated)
 
@@ -101,3 +101,10 @@ docker compose -f docker-compose.yml up -d
 # CACHECALLER
 
 CACHECALLER currently uses `download.freebsd.org`. You can change this at src/shellproxy/dd.c and discord/machines.py. For more information on CACHECALLER, check the pdf
+
+
+# Version profiles
+
+Fresnel supports different version profiles. by default, it targets 14.5-RELEASE, though you can fill in the offsets yourself or use ~~tools/dump.py~~ (soon tm) to automatically generate offsets. this is still very early, see `versions/freebsd-14.5-RELEASE-amd64.json`.
+
+If you dont know how to dump these use an agent or some shit idk lol

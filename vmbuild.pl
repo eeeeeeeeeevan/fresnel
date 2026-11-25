@@ -19,7 +19,14 @@ if (!$PORT_EXPLICIT && -f $PORT_FILE) {
     chomp($PORT = <$port_fh> // "");
     close $port_fh;
 }
-my $REL = "14.5-RELEASE";
+my $PROFILE = $ENV{PROFILE} // "freebsd-14.5-RELEASE-amd64";
+die "invalid profile name\n" unless $PROFILE =~ /^[A-Za-z0-9_.-]+$/;
+my $PROFILE_FILE = "versions/$PROFILE.json";
+open my $profile_fh, "<", $PROFILE_FILE or die "missing profile $PROFILE_FILE\n";
+my $PROFILE_JSON = do { local $/; <$profile_fh> };
+close $profile_fh;
+my ($REL) = $PROFILE_JSON =~ /"release"\s*:\s*"([^"]+)"/;
+$REL //= "14.5-RELEASE";
 my $BASE = "$CACHE/freebsd-$REL.qcow2";
 my $OVERLAY = "$CACHE/lab-overlay.qcow2";
 my $PIDFILE = "$CACHE/lab-qemu.pid";
@@ -64,6 +71,7 @@ my @SRCS = (
     "src/include/spinneret.h",
     "src/include/uehook.h",
     "src/include/stb_ds.h",
+    "versions",
 );
 
 sub run {
@@ -212,7 +220,7 @@ print "+ checking python3...\n";
 run(ssh_cmd("which python3 >/dev/null 2>&1 || (pkg bootstrap -y && ASSUME_ALWAYS_YES=yes pkg install -y python3)"));
 
 print "+ building...\n";
-run(ssh_cmd("cd $VMDIR && python3 build.py"));
+run(ssh_cmd("cd $VMDIR && PROFILE=$PROFILE python3 build.py"));
 
 print "+ pulling tar...\n";
 run(scp_from_vm("$VMDIR/rootkit.tar", "rootkit.tar"));

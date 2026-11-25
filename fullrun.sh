@@ -14,7 +14,8 @@ done
 TAR_FILE="${1:-}"
 CACHE="${CACHE_DIR:-$HOME/.freebsd-cache}"
 PORT="${SSH_PORT:-2222}"
-REL="14.5-RELEASE"
+PROFILE="${PROFILE:-freebsd-14.5-RELEASE-amd64}"
+REL="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release"])' "versions/$PROFILE.json" 2>/dev/null || echo 14.5-RELEASE)"
 
 port_available() {
     python3 -c 'import socket, sys

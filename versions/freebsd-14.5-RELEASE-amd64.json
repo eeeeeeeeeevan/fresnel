@@ -1,0 +1,32 @@
+{
+  "profile": "freebsd-14.5-RELEASE-amd64",
+  "release": "14.5-RELEASE",
+  "arch": "amd64",
+  "kernelbase": "0xffffffff80000000",
+  "symbols": {
+    "initproc": "0xffffffff81b74508",
+    "crdup": "0xffffffff80b80fd0"
+  },
+  "offsets": {
+    "uehook": {
+      "el_entries_first": 64,
+      "el_entries_last": 72,
+      "el_list_next": 48,
+      "ee_next": 0,
+      "ee_prev": 8,
+      "ee_priority": 16,
+      "ee_arg": 24,
+      "ee_func": 32,
+      "ee_size": 40
+    },
+    "image_params": {
+      "image_header": 40,
+      "newcred": 200,
+      "credential_setid": 209
+    }
+  },
+  "limits": {
+    "sys_maxsyscall": 595,
+    "evfilt_syscount": 13
+  }
+}

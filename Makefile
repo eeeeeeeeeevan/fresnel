@@ -6,6 +6,9 @@
 
 .PHONY: all full rebuild fresh clean
 
+PROFILE ?= freebsd-14.5-RELEASE-amd64
+export PROFILE
+
 all: rebuild
 
 full:

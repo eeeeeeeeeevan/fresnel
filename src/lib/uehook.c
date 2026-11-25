@@ -2,19 +2,17 @@
 #include <string.h>
 #include "uehook.h"
 #include "spinneret.h"
+#include "profile.h"
 
-// ok obviously these offsets are all fucking wrong beyond 14.5
-// but wtv
-
-// CHANGE ME FOR OTHER VERISONS OBV go grep them yourself
-#define EL_ENTRIES_FIRST 64
-#define EL_ENTRIES_LAST 72
-#define EE_NEXT 0
-#define EE_PREV 8
-#define EE_PRIORITY 16
-#define EE_ARG 24
-#define EE_FUNC 32
-#define EE_SIZE 40
+#define EL_ENTRIES_FIRST PROFILE_OFFSETS_UEHOOK_EL_ENTRIES_FIRST
+#define EL_ENTRIES_LAST PROFILE_OFFSETS_UEHOOK_EL_ENTRIES_LAST
+#define EL_LIST_NEXT PROFILE_OFFSETS_UEHOOK_EL_LIST_NEXT
+#define EE_NEXT PROFILE_OFFSETS_UEHOOK_EE_NEXT
+#define EE_PREV PROFILE_OFFSETS_UEHOOK_EE_PREV
+#define EE_PRIORITY PROFILE_OFFSETS_UEHOOK_EE_PRIORITY
+#define EE_ARG PROFILE_OFFSETS_UEHOOK_EE_ARG
+#define EE_FUNC PROFILE_OFFSETS_UEHOOK_EE_FUNC
+#define EE_SIZE PROFILE_OFFSETS_UEHOOK_EE_SIZE
 
 u_long uehook_find (const char* name)
 {
@@ -150,7 +148,7 @@ int uehook_walk_all (uehook_all_cb cb, void* ctx)
 			sp_read(cur + EE_NEXT, &cur, 8);
 		}
 
-		sp_read(cur_list + 48, &cur_list, 8);
+		sp_read(cur_list + EL_LIST_NEXT, &cur_list, 8);
 	}
 	return (total);
 }

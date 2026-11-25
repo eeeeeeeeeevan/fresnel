@@ -9,6 +9,7 @@ RUN ME ON FREEBSD VM
 RUN ME ON FREEBSD VM 
 """
 import glob
+import json
 import os
 import secrets
 import subprocess
@@ -34,6 +35,46 @@ magic = secrets.token_hex(8)
 write("rand.h", f"""#define CN_END "__{magic}__"
 #define RMAGIC "{magic}"
 """.encode())
+
+profile_name = os.environ.get("PROFILE", "freebsd-14.5-RELEASE-amd64")
+profile_path = os.path.join("versions", f"{profile_name}.json")
+if not os.path.exists(profile_path):
+    sys.exit("!!! FATAL: cannot find", profile_path)
+
+with open(profile_path) as f:
+    profile = json.load(f)
+
+if profile.get("arch") != "amd64":
+    sys.exit("this isnt amd64", profile.get("arch", "?"))
+
+def profile_macro(prefix, key):
+    part = "".join(c.upper() if c.isalnum() else "_" for c in key)
+    return "PROFILE_" + prefix + "_" + part
+
+def get_profileval(prefix, key, value):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            get_profileval(prefix + ("_" if prefix else "") + key, k, v)
+        return
+    macro = profile_macro(prefix, key)
+    if isinstance(value, str):
+        print(f"#define {macro} \"{value}\"")
+    else:
+        print(f"#define {macro} {value}")
+
+with open("profile.h", "w") as f:
+    old = sys.stdout
+    sys.stdout = f
+    for key in ("profile", "release", "arch", "kernelbase"):
+        if key in profile:
+            print(f"got {key}")
+            get_profileval("", key, profile[key])
+    for key in ("symbols", "offsets", "limits"):
+        if key in profile:
+            get_profileval("", key, profile[key])
+    sys.stdout = old
+
+print("+ generated profile", profile_name)
 
 run("cc", "-O2", "-o", "configgen", "configgen.c")
 with open("config.h", "wb") as f:

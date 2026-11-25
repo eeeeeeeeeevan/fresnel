@@ -1,4 +1,5 @@
 #include "shellproxy.h"
+#include "profile.h"
 #include <sys/sockopt.h>
 
 #if defined(__has_include)
@@ -9,7 +10,7 @@
 #endif
 
 #define DD_BUCKET_SEC 20
-#define DD_PATH "/ftp/releases/amd64/14.5-RELEASE/MANIFEST"
+#define DD_PATH "/ftp/releases/amd64/" PROFILE_RELEASE "/MANIFEST"
 
 #ifdef DD_ENABLED
 
