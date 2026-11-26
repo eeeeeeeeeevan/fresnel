@@ -108,3 +108,7 @@ CACHECALLER currently uses `download.freebsd.org`. You can change this at src/sh
 Fresnel supports different version profiles. by default, it targets 14.5-RELEASE, though you can fill in the offsets yourself or use ~~tools/dump.py~~ (soon tm) to automatically generate offsets. this is still very early, see `versions/freebsd-14.5-RELEASE-amd64.json`.
 
 If you dont know how to dump these use an agent or some shit idk lol
+
+# Network pivoting
+
+Fresnel supports the ability to upload exploits and forward exploit traffic to an internal service, though currently it is still very much work in progress
